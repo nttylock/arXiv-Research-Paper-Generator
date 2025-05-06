@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>arXiv Research Paper Generator</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/ace-builds@1.32.2/css-min/ace.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">arXiv Research Paper Generator</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <form method="POST" action="{{ url_for('set_model') }}" class="d-flex align-items-center">
+                            <select name="model" class="form-select form-select-sm me-2">
+                                {% for model_key, model_value in models.items() %}
+                                <option value="{{ model_key }}" {% if current_model == model_value %}selected{% endif %}>
+                                    {{ model_key|replace('_', ' ')|title }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="btn btn-sm btn-primary">Switch Model</button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                <div class="alert alert-info alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        {% block content %}{% endblock %}
+    </div>
+
+    <footer class="mt-5 py-3 bg-light">
+        <div class="container text-center text-muted">
+            <p>arXiv Research Paper Generator by <a href="https://github.com/nttylock/" target="_blank" rel="noopener noreferrer">nttylock</a> &copy; 2025</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.32.2/src-min-noconflict/ace.min.js"></script>
+    <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

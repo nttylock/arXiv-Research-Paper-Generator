@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h2 class="mb-0">Upload Files for Research Paper Generation</h2>
+            </div>
+            <div class="card-body">
+                {% if not has_latex %}
+                <div class="alert alert-warning">
+                    <strong>Warning:</strong> LaTeX (pdflatex) is not installed on this server. PDF generation will not work, but you can still generate and download LaTeX files.
+                    <br>
+                    To install LaTeX:
+                    <ul>
+                        <li><strong>Ubuntu/Debian:</strong> <code>sudo apt-get install texlive-base texlive-latex-extra texlive-science texlive-bibtex-extra</code></li>
+                        <li><strong>macOS:</strong> Install <a href="https://www.tug.org/mactex/" target="_blank">MacTeX</a></li>
+                        <li><strong>Windows:</strong> Install <a href="https://miktex.org/download" target="_blank">MikTeX</a></li>
+                    </ul>
+                </div>
+                {% endif %}
+                
+                <form action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="file" class="form-label">Select File (TXT, PDF, DOCX, MD)</label>
+                        <input type="file" class="form-control" id="file" name="file" required>
+                        <div class="form-text">Upload any text file, PDF, or DOCX to convert into a research paper.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Paper Title (optional)</label>
+                        <input type="text" class="form-control" id="title" name="title" placeholder="Leave blank to auto-generate a title">
+                    </div>
+                    <div class="mb-3">
+                        <label for="authors" class="form-label">Authors (optional)</label>
+                        <input type="text" class="form-control" id="authors" name="authors" placeholder="Enter authors (e.g., 'John Doe, Jane Smith')">
+                        <div class="form-text">Separate multiple authors with commas. Include affiliations with \\, e.g., 'John Doe\\University'</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Generate Research Paper</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h3 class="mb-0">How It Works</h3>
+            </div>
+            <div class="card-body">
+                <ol>
+                    <li>Upload any text file (TXT, PDF, DOCX, MD)</li>
+                    <li>The system extracts text content from your document</li>
+                    <li>Gemini AI structures your content into a formal research paper format</li>
+                    <li>Edit the LaTeX code directly or use AI to modify sections</li>
+                    <li>Compile and download as a publication-ready PDF in arXiv style</li>
+                </ol>
+                <p class="fw-bold mt-3">Features:</p>
+                <ul>
+                    <li>Auto-extraction of text from various file formats</li>
+                    <li>AI-powered formatting in academic research paper style</li>
+                    <li>LaTeX code editing with syntax highlighting</li>
+                    <li>Gemini AI assistance for refining and expanding content</li>
+                    <li>One-click PDF compilation in arXiv style</li>
+                    <li>Model switching between Gemini Pro and Flash</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+
+{% block extra_head %}
+<style>
+    #editor {
+        height: 600px;
+        border: 1px solid #ccc;
+        margin-bottom: 20px;
+    }
+    .instruction-area {
+        min-height: 100px;
+    }
+    .action-buttons {
+        display: flex;
+        gap: 10px;
+    }
+    .action-buttons .btn {
+        flex-grow: 1;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12 mb-3">
+        <div class="d-flex justify-content-between">
+            <h2>Edit LaTeX Document</h2>
+            <div class="action-buttons">
+                {% if has_latex %}
+                <button id="compileBtn" class="btn btn-success">Compile & Download PDF</button>
+                {% else %}
+                <button id="compileBtn" class="btn btn-success" disabled title="LaTeX not installed">Compile & Download PDF</button>
+                {% endif %}
+                <a href="{{ url_for('download_latex', session_id=session_id) }}" class="btn btn-info">Download LaTeX</a>
+                <a href="{{ url_for('index') }}" class="btn btn-secondary">Back to Upload</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-12">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h3 class="mb-0">LaTeX Editor</h3>
+            </div>
+            <div class="card-body">
+                <div id="editor">{{ latex_content }}</div>
+                <form id="compileForm" method="post" action="{{ url_for('compile_latex_route', session_id=session_id) }}">
+                    <input type="hidden" id="latex_content" name="latex_content" value="{{ latex_content }}">
+                    <input type="hidden" name="compile_pdf" value="1">
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h3 class="mb-0">Gemini AI Assistance</h3>
+            </div>
+            <div class="card-body">
+                <form id="aiForm" data-session-id="{{ session_id }}">
+                    <div class="mb-3">
+                        <label for="instruction" class="form-label">Tell AI what to modify</label>
+                        <textarea id="instruction" class="form-control instruction-area" 
+                            placeholder="Example: 'Expand the introduction section with more background information', 'Improve the methodology section', 'Add a literature review section', 'Add a diagram showing X in section Y', etc."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="modelSelect" class="form-label">Using Model</label>
+                        <select id="modelSelect" class="form-select">
+                            {% for model_key, model_value in models.items() %}
+                            <option value="{{ model_key }}" {% if current_model == model_value %}selected{% endif %}>
+                                {{ model_key|replace('_', ' ')|title }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="button" id="modifyBtn" class="btn btn-primary">Apply AI Changes</button>
+                </form>
+                <div id="aiStatus" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-12 mt-4">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h3 class="mb-0">Add Images & Figures</h3>
+            </div>
+            <div class="card-body">
+                <form id="imageForm" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="imageFile" class="form-label">Upload Image</label>
+                        <input type="file" class="form-control" id="imageFile" name="image" accept="image/*">
+                    </div>
+                    <div class="mb-3">
+                        <label for="captionText" class="form-label">Figure Caption</label>
+                        <input type="text" class="form-control" id="captionText" placeholder="Enter caption for the figure">
+                    </div>
+                    <button type="button" id="addImageBtn" class="btn btn-success">Insert Image Code</button>
+                </form>
+                <div id="imageStatus" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize Ace Editor
+        const editor = ace.edit("editor");
+        editor.setTheme("ace/theme/textmate");
+        editor.session.setMode("ace/mode/latex");
+        editor.setOptions({
+            fontSize: "14px",
+            showPrintMargin: false
+        });
+
+        // Compile and download PDF
+        document.getElementById('compileBtn').addEventListener('click', function() {
+            {% if not has_latex %}
+            alert('LaTeX (pdflatex) is not installed on this server. Please install LaTeX to generate PDFs or download the LaTeX file instead.');
+            return;
+            {% endif %}
+            
+            document.getElementById('latex_content').value = editor.getValue();
+            document.getElementById('compileForm').submit();
+        });
+
+        // AI modification logic
+        document.getElementById('modifyBtn').addEventListener('click', function() {
+            const instruction = document.getElementById('instruction').value.trim();
+            if (!instruction) {
+                alert('Please enter an instruction for the AI');
+                return;
+            }
+
+            const aiStatus = document.getElementById('aiStatus');
+            aiStatus.innerHTML = '<div class="alert alert-info">Processing your request... This may take a moment.</div>';
+
+            // Get session_id from the form's data attribute
+            const sessionId = document.getElementById('aiForm').dataset.sessionId;
+
+            // Send API request to modify LaTeX
+            fetch('{{ url_for("api_modify_latex") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    session_id: sessionId,
+                    latex_content: editor.getValue(),
+                    instruction: instruction,
+                    model: document.getElementById('modelSelect').value
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    aiStatus.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                } else {
+                    // Update editor with modified LaTeX
+                    editor.setValue(data.latex_content, -1); // -1 moves cursor to start
+                    aiStatus.innerHTML = '<div class="alert alert-success">Changes applied successfully!</div>';
+                }
+            })
+            .catch(error => {
+                aiStatus.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+            });
+        });
+
+        // Switch model for AI modifications
+        document.getElementById('modelSelect').addEventListener('change', function() {
+            fetch('{{ url_for("set_model") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    'model': this.value
+                })
+            });
+        });
+        
+        // Image upload and LaTeX code generation
+        document.getElementById('addImageBtn').addEventListener('click', function() {
+            const imageFile = document.getElementById('imageFile').files[0];
+            const caption = document.getElementById('captionText').value.trim();
+            
+            if (!imageFile) {
+                alert('Please select an image file');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('image', imageFile);
+            
+            const imageStatus = document.getElementById('imageStatus');
+            imageStatus.innerHTML = '<div class="alert alert-info">Uploading image... Please wait.</div>';
+            
+            fetch('{{ url_for("upload_image") }}', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    imageStatus.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                } else {
+                    // Generate LaTeX code for the image
+                    let latexCode = `\\begin{figure}[ht]\n\\centering\n\\includegraphics[width=0.8\\textwidth]{${data.image_path}}\n`;
+                    if (caption) {
+                        latexCode += `\\caption{${caption}}\n`;
+                    } else {
+                        latexCode += `\\caption{Figure caption}\n`;
+                    }
+                    latexCode += `\\label{fig:${imageFile.name.split('.')[0]}}\n\\end{figure}`;
+                    
+                    // Insert the LaTeX code at the current cursor position
+                    editor.insert(latexCode);
+                    
+                    imageStatus.innerHTML = '<div class="alert alert-success">Image uploaded and code inserted!</div>';
+                    
+                    // Clear the form
+                    document.getElementById('imageFile').value = '';
+                    document.getElementById('captionText').value = '';
+                }
+            })
+            .catch(error => {
+                imageStatus.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+            });
+        });
+    });
+</script>
+{% endblock %}
